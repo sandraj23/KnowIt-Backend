@@ -3,6 +3,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from llm_agent import OpenAIService
+from cache_manager import CacheManager
 
 
 # —————— Flask & CORS setup ——————#
@@ -13,8 +14,12 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # —————— LLM client init ——————#
 # Initialize the OpenAI client with the provided API key and model
 llm_client = OpenAIService(
-    api_key="APIKEY"
+    api_key="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"
 )
+
+# —————— Cache manager init ——————#
+# Initialize the cache manager to store LLM responses
+cache_manager = CacheManager(cache_dir="cache")
 
 # —————— Health‐check endpoint ——————#
 # Simple health-check endpoint to verify the service is running
@@ -36,14 +41,22 @@ def evaluate():
     payload = request.get_json(silent=True)
 
     # Validate payload
-    if not payload or 'html_content' not in payload:
-        return jsonify({"error": "Missing 'html_content' in request"}), 400
+    if not payload or 'content' not in payload:
+        return jsonify({"error": "Missing 'content' in request"}), 400
 
     # Extract HTML content from payload
-    html_content = payload['html_content']
+    content = payload['content']
 
     try:
-        extracted = llm_client.extract_article_content(html_content)
+        # Try the cache first
+        cached_response = cache_manager.load_response(content)
+        if cached_response:
+            return jsonify(cached_response), 200
+        
+        # If not cached, call the LLM to extract article content
+        # and save the response to the cache
+        extracted = llm_client.extract_article_content(content)
+        cache_manager.save_response(content, extracted)
     except Exception as e:
         return jsonify({"error": f"Extraction failed: {e}"}), 500
     

@@ -56,7 +56,7 @@ project-root/
    ```
 2. Install dependencies:
    ```bash
-   pip install Flask flask-cors openai
+   pip install -r requirements.txt
    ```
 
 ---
