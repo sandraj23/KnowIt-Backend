@@ -13,7 +13,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # —————— LLM client init ——————#
 # Initialize the OpenAI client with the provided API key and model
 llm_client = OpenAIService(
-    api_key="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"
+    api_key="APIKEY"
 )
 
 # —————— Health‐check endpoint ——————#
