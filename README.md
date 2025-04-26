@@ -1,6 +1,6 @@
-# reliably
+# Reliably (UWB 2025 Hackathon - Security Track)
 
-A lightweight Flask-based backend service that evaluates the reliability of web‐scraped articles by extracting key elements (topic, claims, data, intent) via OpenAI and scoring their trustworthiness.
+## Project Information  - plz add!!!
 
 ---
 
@@ -159,6 +159,4 @@ This separation keeps your Flask routes clean and makes LLM logic reusable.
 - **CORS issues** in the browser: restrict origins in `CORS(app, …)` to your extension’s ID or domain.
 
 ---
-
-*Happy coding!* Feel free to open issues or contribute improvements.
 
