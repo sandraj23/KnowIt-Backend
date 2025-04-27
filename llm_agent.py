@@ -183,7 +183,6 @@ class OpenAIService:
         return {k.lower(): parsed[k] for k in required}
 
     # def search_and_compare(self, topic: str, intent: str, original_claims: List[str], num_results: int = 5) -> Dict[str, Any]:
-       
     #     '''
     #     Searches for articles matching topic + intent, extracts their claims, and
     #     classifies each claim as similar or different to the original.
@@ -193,7 +192,7 @@ class OpenAIService:
     #     "search_query": "<query>",
     #     "results": [
     #         {
-    #         "topic": "...",
+    #         "title": "...",
     #         "url": "...",
     #         "claims": [...],
     #         "similar_claims": [...],
@@ -204,91 +203,110 @@ class OpenAIService:
     #     }
     #     '''
 
-    #     # debug output
     #     print("\n==== Inside search_and_compare ====")
-    #     print(f"Query to search: {topic} {intent}")
-
-    #     # 1) Build the search query & perform web search
-    #     # debug
-    #     print("About to call perform_search...")
+    #     # >>> Simplify the query (no more embedding original_claims in it)
     #     query = f"{topic} {original_claims} {intent}"
-    #     results = perform_search(query, num_results)
-    #     #debug
-    #     print(f"perform_search returned {len(results)} results!")
-        
 
-    #     # 2) Assemble the prompt for comparison
-    #     prompt = (
-    #         "You are a research assistant. Original Article Context:\n"
-    #         f"Topic: {topic}\n"
-    #         "Claims:\n"
-    #     )
-    #     for claim in original_claims:
-    #         prompt += f"- {claim}\n"
-    #     prompt += (
-    #         f"Intent: {intent}\n\n"
-    #         "Search results (title, URL, snippet):\n"
-    #     )
-    #     for idx, r in enumerate(results, start=1):
-    #         prompt += (
-    #             f"{idx}. Title: {r['title']}\n"
-    #             f"   URL: {r['url']}\n"
-    #             f"   Snippet: {r['snippet']}\n\n"
-    #         )
+    #     #print(f"Query to search: {query}")
+    #     raw_results = perform_search(query, num_results)
+    #     #print(f"perform_search returned {len(raw_results)} results!")
 
-    #     prompt += (
-    #         "For each result, extract its main claims, compare them with the "
-    #         "original claims, and classify each as 'similar' or 'different'. "
-    #         "Similar claims should be those that are closely related to the original claims.\n\n"
-    #         "Be lenient regarding the similarity of claims since different articles tend to discuss different points of arguments."
-    #         "If a claim is similar but not identical, it should be classified as 'similar'.\n\n"
-    #         "Return only JSON in the following schema:\n"
-    #         "{\n"
-    #         "  \"search_query\": \"<query>\",\n"
-    #         "  \"results\": [\n"
-    #         "    {\n"
-    #         "      \"title\": \"...\",\n"
-    #         "      \"url\": \"...\",\n"
-    #         "      \"claims\": [...],\n"
-    #         "      \"similar_claims\": [...],\n"
-    #         "      \"different_claims\": [...]\n"
-    #         "    },\n"
-    #         "    ...\n"
-    #         "  ]\n"
-    #         "}\n"
-    #     )
+    #     enriched = []
+    #     for r in raw_results:
+    #         url   = r["url"]
+    #         title = r["title"]
 
-    #     # 🔥 ADD THIS PRINT
-    #     print("About to call OpenAI LLM to compare claims...")
+    #         # >>> 2a) Fetch the article text
+    #         try:
+    #             article_text = fetch_article_text(url)
+    #         except Exception as e:
+    #             print(f"⚠️  Failed to fetch {url}: {e}")
+    #             continue
 
-    #     # 3) Call the LLM and return parsed JSON
-    #     response = self.client.chat.completions.create(
-    #         model=self.model,
-    #         messages=[{"role": "user", "content": prompt}],
-    #         temperature=0
-    #     )
+    #         # >>> 2b) Extract its claims via your LLM wrapper
+    #         try:
 
-    #     # DEBUG: print raw comparison output
-    #     raw_cmp = response.choices[0].message.content.strip()
-    #     print("\n===== RAW COMPARISON LLM OUTPUT =====")
-    #     print(raw_cmp)
-    #     print("=====================================\n")
+    #             # info  = self.extract_article_content(article_text)
 
-    #     # ——— START OF CLEANUP CHANGES ———
-    #     # 1) remove any ``` or ```json fences
-    #     raw_cmp = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_cmp, flags=re.MULTILINE)
-    #     # 2) drop everything before the first '{'
-    #     if '{' in raw_cmp:
-    #         raw_cmp = raw_cmp[ raw_cmp.find('{') : ]
-    #     # ——— END OF CLEANUP CHANGES ———
 
-    #     # finally parse
-    #     return json.loads(raw_cmp)
+    #             prompt = (
+    #                 "You are a research assistant. Original Article Context:\n"
+    #                 f"Topic: {topic}\n"
+    #                 "Claims:\n"
+    #             )
+    #             for claim in original_claims:
+    #                 prompt += f"- {claim}\n"
+    #             prompt += (
+    #                 f"Intent: {intent}\n\n"
+    #                 "Here is the new article to analyze and compare:\n\n"
+    #                 f"{article_text}\n\n"
+    #                 "For this article, extract its main claims"
+    #                 ", compare them with the "
+    #                 "original claims, and classify each as 'similar' or 'different'. "
+    #                 "Make sure to split similar claims from different claims.\n\n"
+    #                 "Make sure to be lenient regarding the similarity of claims since different articles tend to discuss different points of arguments.\n\n"
+    #                 "Similar claims should be closely related to the originals.  If a "
+    #                 "claim is similar but not identical, still classify it as 'similar'.\n\n"
+    #                 "Return only valid JSON in this schema:\n"
+    #                 "{\n"
+    #                 "  \"results\": [\n"
+    #                 "    {\n"
+    #                 "      \"title\": \"<same as input>\",\n"
+    #                 "      \"url\": \"<same as input>\",\n"
+    #                 "      \"claims\": [...],\n"
+    #                 "      \"similar_claims\": [...],\n"
+    #                 "      \"different_claims\": [...]\n"
+    #                 "    }\n"
+    #                 "  ]\n"
+    #                 "}\n"
+    #             )
 
-    #     # old return
-    #     # return json.loads(response.choices[0].message.content)
+    #             # 2) Call the LLM
+    #             response = self.client.chat.completions.create(
+    #                 model=self.model,
+    #                 messages=[{"role": "user", "content": prompt}],
+    #                 temperature=0
+    #             )
+    #             raw_cmp = response.choices[0].message.content.strip()
 
-    def search_and_compare(self, topic: str, intent: str, original_claims: List[str], num_results: int = 5) -> Dict[str, Any]:
+    #             # 3) Cleanup markdown fences
+    #             raw_cmp = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_cmp, flags=re.MULTILINE)
+    #             # 4) Drop anything before the first '{'
+    #             if "{" in raw_cmp:
+    #                 raw_cmp = raw_cmp[ raw_cmp.find("{") : ]
+
+    #             # 5) Parse JSON
+    #             parsed = json.loads(raw_cmp)
+
+    #             # 6) Grab the claims array from the first (and only) result
+    #             new_claims = parsed.get("results", [])[0].get("claims", []) 
+    #             similar = parsed.get("results", [])[0].get("similar_claims", [])
+    #             different = parsed.get("results", [])[0].get("different_claims", [])
+                
+            
+    #         except Exception as e:
+    #             print(f"⚠️  Failed to extract claims from {url}: {e}")
+    #             new_claims = []
+
+    #         # >>> 2c) Classify similar vs. different
+    #         # similar   = [c for c in new_claims if c in original_claims]
+    #         # different = [c for c in new_claims if c not in original_claims]
+
+    #         enriched.append({
+    #             "title":            title,
+    #             "url":              url,
+    #             "claims":           new_claims,
+    #             "similar_claims":   similar,
+    #             "different_claims": different
+    #         })
+
+    #     # >>> 2d) Return the enriched result set
+    #     return {
+    #         "search_query": query,
+    #         "results":      enriched
+    #     }
+
+    def search_and_compare(self, topic: str, intent: str, original_claims: List[str], num_results: int = 10) -> Dict[str, Any]:
         '''
         Searches for articles matching topic + intent, extracts their claims, and
         classifies each claim as similar or different to the original.
@@ -325,6 +343,7 @@ class OpenAIService:
             # >>> 2a) Fetch the article text
             try:
                 article_text = fetch_article_text(url)
+                #print(article_text)
             except Exception as e:
                 print(f"⚠️  Failed to fetch {url}: {e}")
                 continue
@@ -332,9 +351,60 @@ class OpenAIService:
             # >>> 2b) Extract its claims via your LLM wrapper
             try:
 
-                # info  = self.extract_article_content(article_text)
+                # This Prompt provides the LLM with Context
+                prompt = (
+                    "You are a research assistant. Original Article Context:\n"
+                    f"Topic: {topic}\n"
+                    "Claims:\n"
+                )
+                for claim in original_claims:
+                    prompt += f"- {claim}\n"
 
+                # This Prompt Extracts Main Claim from Article
+                prompt += (
+                    f"Intent: {intent}\n\n"
+                    "Here is the new article to analyze:\n\n"
+                    f"{article_text}\n\n"
+                    "For this article, extract its main claims"
+                    "{\n"
+                    "  \"results\": [\n"
+                    "    {\n"
+                    "      \"title\": \"<same as input>\",\n"
+                    "      \"url\": \"<same as input>\",\n"
+                    "      \"new claims\": [...],\n"
+                    "    }\n"
+                    "  ]\n"
+                    "}\n"
+                )
 
+                # 2) Call the LLM
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0
+                )
+                raw_cmp = response.choices[0].message.content.strip()
+
+                # 3) Cleanup markdown fences
+                raw_cmp = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_cmp, flags=re.MULTILINE)
+                # 4) Drop anything before the first '{'
+                if "{" in raw_cmp:
+                    raw_cmp = raw_cmp[ raw_cmp.find("{") : ]
+
+                # 5) Parse JSON
+                parsed = json.loads(raw_cmp)
+
+                # 6) Grab the claims array from the first (and only) result
+                new_claims = parsed.get("results", [])[0].get("new claims", []) 
+            
+            except Exception as e:
+                print(f"⚠️  Failed to extract claims from {url}: {e}")
+                new_claims = []
+
+            try:
+            
+
+                # This Prompt provides the LLM with Context
                 prompt = (
                     "You are a research assistant. Original Article Context:\n"
                     f"Topic: {topic}\n"
@@ -344,10 +414,14 @@ class OpenAIService:
                     prompt += f"- {claim}\n"
                 prompt += (
                     f"Intent: {intent}\n\n"
-                    "Here is the new article to analyze and compare:\n\n"
-                    f"{article_text}\n\n"
-                    "For this article, extract its main claims, compare them with the "
-                    "original claims, and classify each as 'similar' or 'different'. "
+                )
+
+                prompt += (
+                    "Here is the new article's claims:\n\n"
+                    f"{new_claims}\n\n"
+                    "Compare them with the original claims, and classify each as 'similar' or 'different'. "
+                    "Make sure to split similar claims from different claims.\n\n"
+                    "Make sure to be lenient regarding the similarity of claims since different articles tend to discuss different points of arguments.\n\n"
                     "Similar claims should be closely related to the originals.  If a "
                     "claim is similar but not identical, still classify it as 'similar'.\n\n"
                     "Return only valid JSON in this schema:\n"
@@ -356,7 +430,6 @@ class OpenAIService:
                     "    {\n"
                     "      \"title\": \"<same as input>\",\n"
                     "      \"url\": \"<same as input>\",\n"
-                    "      \"claims\": [...],\n"
                     "      \"similar_claims\": [...],\n"
                     "      \"different_claims\": [...]\n"
                     "    }\n"
@@ -382,23 +455,21 @@ class OpenAIService:
                 parsed = json.loads(raw_cmp)
 
                 # 6) Grab the claims array from the first (and only) result
-                new_claims = parsed.get("results", [])[0].get("claims", []) 
                 similar = parsed.get("results", [])[0].get("similar_claims", [])
-                different = parsed.get("results", [])[0].get("different_claims", [])
+                different = parsed.get("results", [])[0].get("different_claims", []) 
             
             except Exception as e:
                 print(f"⚠️  Failed to extract claims from {url}: {e}")
                 new_claims = []
-
             # >>> 2c) Classify similar vs. different
             # similar   = [c for c in new_claims if c in original_claims]
             # different = [c for c in new_claims if c not in original_claims]
 
             enriched.append({
-                "title":            title,
-                "url":              url,
-                "claims":           new_claims,
-                "similar_claims":   similar,
+                "title": title,
+                "url": url,
+                "new claims": new_claims,
+                "similar_claims": similar,
                 "different_claims": different
             })
 
@@ -407,4 +478,8 @@ class OpenAIService:
             "search_query": query,
             "results":      enriched
         }
+
+
+
+
 
