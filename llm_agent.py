@@ -73,6 +73,53 @@ class OpenAIService:
         self.client = OpenAI(api_key=api_key)
         self.model = model
 
+
+
+    # Based on email content, this function will return a JSON with:
+    # - phishingSense: int (1-5)
+    # - explanation: str
+    def evaluate_phishing(self, content: str) -> Dict[str, Any]:
+        '''
+        Given the email content, asks the LLM to rate phishing sense on a scale 1-5
+        and return a JSON with:
+            - phishingSense: 1-5
+            - explanation: str
+        '''
+        prompt = (
+            f"Given the following email content:\n{content}\n\n"
+            "Assess the phishing sense of this email on a scale from 1 (low) to 5 (high)."
+            " Return only a JSON object with keys 'phishingSense' and 'explanation'."
+            "Ensure the JSON is valid and parsable. Use the following format:\n"
+            "{\n"
+            "  \"phishingSense\": \"...\",\n"
+            "  \"explanation\": \"...\"\n"
+            "}\n\n"
+            "Return only the JSON object without any additional text."
+        )
+        resp = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0
+        )
+        # Parse the response and return it
+        llm_output_raw = resp.choices[0].message.content.strip()
+        # Log the raw output for debugging
+        print(f"LLM raw output: {llm_output_raw}")
+        try:
+            parsed = json.loads(llm_output_raw)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to parse LLM JSON output: {e} Output was: {resp.choices[0].message.content}")
+        # Validate keys
+        print(f"Parsed LLM output: {parsed}")
+        required = {"phishingSense", "explanation"}
+        keys = set(parsed.keys())
+        if not required.issubset(keys):
+            missing = required - keys
+            raise ValueError(f"LLM output missing keys: {missing} Output was: {parsed}")
+        # Normalize keys to lowercase and return
+        print({k.lower(): parsed[k] for k in required})
+        return {k.lower(): parsed[k] for k in required}
+
     # Extract article content using the LLM
     def extract_article_content(self, html_content: str) -> Dict[str, Any]:
         

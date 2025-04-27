@@ -41,11 +41,12 @@ def evaluate():
     payload = request.get_json(silent=True)
 
     # Validate payload
-    if not payload or 'content' not in payload:
-        return jsonify({"error": "Missing 'content' in request"}), 400
+    if not payload or 'content' not in payload or 'url' not in payload:
+        return jsonify({"error": "Missing parameters in request"}), 400
 
     # Extract HTML content from payload
     content = payload['content']
+    url = payload['url']
 
     try:
         # Try the cache first
@@ -85,6 +86,43 @@ def evaluate():
         "search_comparison": search_comparison
     }), 200
 
+
+
+# ---————— Phishing endpoint ——————#
+# Endpoint to handle phishing detection
+@app.route('/phishing', methods=['POST'])
+def phishing():
+    # Check if the request contains JSON data
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 400
+    
+    # Parse JSON payload
+    payload = request.get_json(silent=True)
+
+    # Validate payload
+    if not payload or 'content' not in payload:
+        return jsonify({"error": "Missing 'content' in request"}), 400
+
+    # Extract HTML content from payload
+    content = payload['content']
+
+    try:
+        # Call the LLM to evaluate phishing
+        result = llm_client.evaluate_phishing(content)
+    except Exception as e:
+        return jsonify({"error": f"Phishing evaluation failed: {e}"}), 500
+    
+    # Extract the relevant fields from the LLM output
+    phishing_result = {
+        "phishingsense": result.get("phishingsense"),
+        "explanation": result.get("explanation")
+    }
+
+    # Output the phishing evaluation result
+    return jsonify(phishing_result), 200
+    
+
+        
 
 
 
