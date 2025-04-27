@@ -52,14 +52,15 @@ def evaluate():
     try:
         # Try the cache first
         cached_response = cache_manager.load_response(content)
-        if cached_response:
-            return jsonify(cached_response), 200
+        # if cached_response:
+        #     return jsonify(cached_response), 200
         
         # If not cached, call the LLM to extract article content
         # and save the response to the cache
 
         # Step 1: Extract article info
         extracted = llm_client.extract_article_content(content)
+        print("Extracted info:", extracted)
 
         # Step 2: Live search and compare claims
         search_comparison = llm_client.search_and_compare(
@@ -89,34 +90,29 @@ def evaluate():
     article = Article(url)
     article.download()
     article.parse()
-    article.nlp()
     # Extract metadata
     article_title = article.title
     article_authors = article.authors
     article_content = article.text
     
+    # Step 5: Use LLM to evaluate metadata
+    metadata_evaluation = llm_client.evaluate_article_metadata(
+        article_title,
+        article_authors,
+        article_content
+    )
 
-    # Evaluate reliability based on the following questions:
-    # 1. The author specifies the researcher/s who conducted the original study
-    # 2. The article includes references, citations, and links to support their claims
-    # 3. The article is written fairly and neutrally and is free from exaggeration
-    # 4. You can find the original study based on the information provided
-    # 5. You know how many people participated in the original study
-    # 6. You can make reasonable conclusions from the information provided
-    # 7. The article was published by a trustworthy source
-    # 8. The content of the article appears to be accurate, factual, and recent
-    # 9. The article appears to be free from bias and objective
-    # 10. The findings can be supported by other sources
+    # Step 6: Combine all results
+    print("Metadata evaluation:", metadata_evaluation)
 
+    # Combine all results into a single response
+    combined_result = {
+        "article_context": article_context,
+        "metadata_evaluation": metadata_evaluation
+    }
 
-    
-
-
-    # Output the extracted article context
-    return jsonify({
-        "extracted_info": article_context,
-        "search_comparison": search_comparison
-    }), 200
+    # Output the combined result
+    return jsonify(combined_result), 200
 
 
 

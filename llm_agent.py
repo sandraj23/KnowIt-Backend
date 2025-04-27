@@ -69,9 +69,89 @@ class OpenAIService:
     '''
 
     # Initialize the OpenAI client with the provided API key and model
-    def __init__(self, api_key: str, model: str = "gpt-4o-mini"):  # Replace with o3 or o4 later (More token expensive so please don't use it for now)
+    def __init__(self, api_key: str, model: str = "o3"):  # Replace with o3 or o4 later (More token expensive so please don't use it for now)
         self.client = OpenAI(api_key=api_key)
         self.model = model
+
+    def evaluate_article_metadata(self, title: str, authors: str, content: str) -> Dict[str, Any]:
+        """
+        Evaluate the article metadata and return a JSON object answering the following questions:
+            1. The author specifies the researcher/s who conducted the original study
+            2. The article includes references, citations, and links to support their claims
+            3. The article is written fairly and neutrally and is free from exaggeration
+            4. You can find the original study based on the information provided
+            5. You know how many people participated in the original study
+            6. You can make reasonable conclusions from the information provided
+            7. The article was published by a trustworthy source
+            8. The content of the article appears to be accurate, factual, and recent
+            9. The article appears to be free from bias and objective
+            10. The findings can be supported by other sources
+        """
+        prompt = (
+            "Given the following article metadata:\n"
+            f"Title: {title}\n"
+            f"Authors: {authors}\n"
+            f"Content: {content}\n\n"
+            "Evaluate the article based on the following criteria:\n"
+            "1. The author specifies the researcher/s who conducted the original study\n"
+            "2. The article includes references, citations, and links to support their claims\n"
+            "3. The article is written fairly and neutrally and is free from exaggeration\n"
+            "4. You can find the original study based on the information provided\n"
+            "5. You know how many people participated in the original study\n"
+            "6. You can make reasonable conclusions from the information provided\n"
+            "7. The article was published by a trustworthy source\n"
+            "8. The content of the article appears to be accurate, factual, and recent\n"
+            "9. The article appears to be free from bias and objective\n"
+            "10. The findings can be supported by other sources\n\n"
+            "Return a JSON object with keys and boolean values: \n"
+            "specifies_researcher, includes_references, written_fairly, "
+            "find_original_study, know_participants, make_conclusions, "
+            "published_trustworthy, content_accurate, free_from_bias, "
+            "findings_supported\n\n"
+            "Ensure the JSON is valid and parsable. Use the following format:\n"
+            "{\n"
+            "  \"specifies_researcher\": ...,\n"
+            "  \"includes_references\": ...,\n"
+            "  \"written_fairly\": ...,\n"
+            "  \"find_original_study\": ...,\n"
+            "  \"know_participants\": ...,\n"
+            "  \"make_conclusions\": ...,\n"
+            "  \"published_trustworthy\": ...,\n"
+            "  \"content_accurate\": ...,\n"
+            "  \"free_from_bias\": ...,\n"
+            "  \"findings_supported\": ...\n"
+            "}\n\n"
+            "Return only the JSON object without any additional text."
+        )
+
+        # Call OpenAI API
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            # temperature=0
+        )
+
+        # Parse the response and return it
+        llm_output_raw = response.choices[0].message.content.strip()
+
+        try :
+            parsed = json.loads(llm_output_raw)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to parse LLM JSON output: {e} Output was: {llm_output_raw}")
+        # Validate keys
+        required = {
+            "specifies_researcher", "includes_references", "written_fairly",
+            "find_original_study", "know_participants", "make_conclusions",
+            "published_trustworthy", "content_accurate", "free_from_bias",
+            "findings_supported"
+        }
+        keys = set(parsed.keys())
+        if not required.issubset(keys):
+            missing = required - keys
+            raise ValueError(f"LLM output missing keys: {missing} Output was: {parsed}")
+        # Normalize keys to lowercase and return
+        return {k.lower(): parsed[k] for k in required}
+
 
 
 
@@ -99,7 +179,7 @@ class OpenAIService:
         resp = self.client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0
+            # temperature=0
         )
         # Parse the response and return it
         llm_output_raw = resp.choices[0].message.content.strip()
@@ -154,7 +234,7 @@ class OpenAIService:
         response = self.client.chat.completions.create(
             model = self.model,
             messages = [{"role": "user", "content": prompt}],
-            temperature = 0.2 # Lower temperature for more deterministic output (Play around with this value)
+            # temperature = 0.2 # Lower temperature for more deterministic output (Play around with this value)
         )
 
         # Check if response is valid
@@ -441,7 +521,7 @@ class OpenAIService:
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0
+                    # temperature=0
                 )
                 raw_cmp = response.choices[0].message.content.strip()
 
