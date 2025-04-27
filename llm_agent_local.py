@@ -38,7 +38,7 @@ def fetch_article_text(url: str, timeout: float = 5.0) -> str:
     except Exception as e:
         # swallow everything: timeouts, 403, 404, etc.
         print(f"⚠️ HTTP fallback failed for {url}: {e}")
-        return ""
+        return "-1"
 
 def perform_search(query: str, num_results: int = 5) -> List[Dict[str, str]]:
     """
@@ -50,8 +50,6 @@ def perform_search(query: str, num_results: int = 5) -> List[Dict[str, str]]:
     Returns:
       List of dicts with keys: 'title', 'url', 'snippet'.
     """
-    api_key = 'AIzaSyBzMwB74bQv-I5s89f55RJdNdbXvwclMwU'
-    cse_id = 'd54dc2607535a4fbb'
     if not api_key or not cse_id:
         raise EnvironmentError("Please set GOOGLE_CSE_API_KEY and GOOGLE_CSE_ID environment variables.")
 
@@ -67,6 +65,8 @@ def perform_search(query: str, num_results: int = 5) -> List[Dict[str, str]]:
     data = resp.json()
 
     results = []
+
+
     for item in data.get("items", []):
         results.append({
             "title":   item.get("title"),
@@ -133,7 +133,7 @@ class OllamaService:
         topic: str,
         intent: str,
         original_claims: List[str],
-        num_results: int = 3
+        num_results: int = 4
     ) -> Dict[str, Any]:
         """
         Search topic+intent, then for each result extract key claims and have the LLM
@@ -142,7 +142,11 @@ class OllamaService:
         """
         query = f"{topic} {intent}"
         enriched = []
-        for item in perform_search(query, num_results):
+        loop = num_results
+        for item in perform_search(query, loop):
+            if(item == "-1"):
+                loop += 1
+
             title, url = item['title'], item['url']
             text = fetch_article_text(url)
             if not text:

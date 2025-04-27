@@ -47,7 +47,6 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Pass an empty API key; it's ignored by the local implementation
 llm_client_openai = OpenAIService(
-    api_key="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"
 )
 llm_client = OllamaService(
     api_key="",

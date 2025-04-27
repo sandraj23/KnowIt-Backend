@@ -69,7 +69,7 @@ class OpenAIService:
     '''
 
     # Initialize the OpenAI client with the provided API key and model
-    def __init__(self, api_key: str, model: str = "o3"):  # Replace with o3 or o4 later (More token expensive so please don't use it for now)
+    def __init__(self, api_key: str, model: str = "gpt-4o-mini"):  # Replace with o3 or o4 later (More token expensive so please don't use it for now)
         self.client = OpenAI(api_key=api_key)
         self.model = model
 
