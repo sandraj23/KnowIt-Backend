@@ -1,6 +1,143 @@
-# Reliably (UWB 2025 Hackathon - Security Track)
+# KnowIt (UWB 2025 Hackathon - Security Track)
 
-## Project Information  - plz add!!!
+# KnowIt Backend  
+*Submission for UW Saves The World Hackathon – April 27, 2025*  
+
+This repository contains the backend service for **KnowIt**, a Chrome extension that assesses article reliability and detects phishing in Gmail. The service exposes two HTTP endpoints—`/evaluate` and `/phishing`—that the frontend calls to power its functionality.
+
+---
+
+## 📋 Table of Contents  
+- [Features](#features)  
+- [Tech Stack & Dependencies](#tech-stack--dependencies)  
+- [Environment Variables](#environment-variables)  
+- [API Endpoints](#api-endpoints)  
+- [Installation & Setup](#installation--setup)  
+- [Running the Service](#running-the-service)  
+- [Example Requests](#example-requests)  
+- [Future Work](#future-work)  
+- [License](#license)  
+
+---
+
+## Features  
+- **Article Reliability Evaluation**  
+  - Scrapes and parses online articles using `newspaper3k`.  
+  - Sends cleaned text to the OpenAI API to compute a reliability score and suggest alternative sources.  
+- **Gmail Phishing Detection**  
+  - Receives raw email content and uses OpenAI to classify phishing risk (numeric score + explanation).  
+- **Caching**  
+  - `cache_manager.py` prevents repeated LLM calls for the same input, improving response time and reducing API usage.  
+
+---
+
+## Tech Stack & Dependencies  
+- **Python 3.8+**  
+- **Flask** – HTTP server framework  
+- **Flask-CORS** – Cross-origin support for frontend requests  
+- **OpenAI Python SDK** – LLM integration  
+- **newspaper3k** – Article scraping & text extraction requirements.txt](file-service://file-WKu11AZhCuLbTnmZspmZoj)  
+
+Install dependencies from `requirements.txt`:  
+   ```bash   
+      pip install -r requirements.txt
+   ```
+
+---
+
+## Environment Variables
+
+Before running, set your OpenAI API key:
+
+export OPENAI_API_KEY="sk-…"
+
+---
+
+## API Endpoints
+
+POST /evaluate
+	•	Purpose: Compute a reliability score (0–100%) and suggest alternative article URLs.
+	•	Request Body (JSON):
+
+{ "content": "<full article text>" }
+
+
+	•	Response (JSON):
+
+{
+  "score": 72,
+  "alternatives": [
+    "https://reliable-source-1.example",
+    "https://reliable-source-2.example"
+  ]
+}
+
+POST /phishing
+	•	Purpose: Analyze an email’s content for phishing risk.
+	•	Request Body (JSON):
+
+{ "content": "<raw email HTML/text>" }
+
+	•	Response (JSON):
+
+{
+  "phishingsense": 2,
+  "explanation": "The email uses urgent language, unfamiliar sender, and suspicious links."
+}
+
+---
+
+## Installation & Setup
+	1.	Clone this repo:
+
+   git clone https://github.com/yourorg/KnowIt-Backend.git
+   cd KnowIt-Backend
+
+	2.	Install dependencies:
+
+   pip install -r requirements.txt
+
+	3.	Export your OpenAI key:
+
+   export OPENAI_API_KEY="sk-…"
+
+---
+
+## Running the Service
+
+Start the Flask server on port 4999 (must match the frontend):
+
+python main.py
+
+By default, CORS is enabled so the Chrome extension can call these endpoints directly.
+
+---
+
+## Example Requests
+
+# Evaluate an article
+curl -X POST http://localhost:4999/evaluate \
+     -H "Content-Type: application/json" \
+     -d '{"content":"<paste article text>"}'
+
+# Check for phishing
+curl -X POST http://localhost:4999/phishing \
+     -H "Content-Type: application/json" \
+     -d '{"content":"<paste raw email HTML/text>"}'
+
+---
+
+## Future Work
+-	Persist cache to disk or Redis for cross-instance sharing.
+-	Add rate limiting to protect the OpenAI API key.
+-	Improve prompt engineering for more nuanced scoring.
+-	Deploy to a cloud service (e.g., AWS Lambda + API Gateway).
+
+---
+
+## License
+
+Released under the MIT License. See LICENSE for details.
 
 ---
 
