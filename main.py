@@ -21,7 +21,7 @@ llm_client = OpenAIService(
 # Initialize the cache manager to store LLM responses
 cache_manager = CacheManager(cache_dir="cache")
 
-# —————— Health‐check endpoint ——————#
+# —————— Health‐check e ndpoint ——————#
 # Simple health-check endpoint to verify the service is running
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -55,7 +55,18 @@ def evaluate():
         
         # If not cached, call the LLM to extract article content
         # and save the response to the cache
+
+        # Step 1: Extract article info
         extracted = llm_client.extract_article_content(content)
+
+        # Step 2: Live search and compare claims
+        search_comparison = llm_client.search_and_compare(
+            topic=extracted.get("topic"),
+            intent=extracted.get("intent"),
+            original_claims=extracted.get("claims")
+        )
+
+        # Step 3: Save cache (only extracted info for now, optional to extend)
         cache_manager.save_response(content, extracted)
     except Exception as e:
         return jsonify({"error": f"Extraction failed: {e}"}), 500
@@ -69,7 +80,11 @@ def evaluate():
     }
 
     # Output the extracted article context
-    return jsonify(article_context), 200
+    return jsonify({
+        "extracted_info": article_context,
+        "search_comparison": search_comparison
+    }), 200
+
 
 
 
