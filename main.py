@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from llm_agent import OpenAIService
 from cache_manager import CacheManager
+from newspaper import Article
 
 
 # —————— Flask & CORS setup ——————#
@@ -79,6 +80,37 @@ def evaluate():
         "data": extracted.get("data"),
         "intent": extracted.get("intent")
     }
+
+
+
+
+    # Stuff for metadata evaluation
+    # Step 4: Use Newspaper3k to extract metadata
+    article = Article(url)
+    article.download()
+    article.parse()
+    article.nlp()
+    # Extract metadata
+    article_title = article.title
+    article_authors = article.authors
+    article_content = article.text
+    
+
+    # Evaluate reliability based on the following questions:
+    # 1. The author specifies the researcher/s who conducted the original study
+    # 2. The article includes references, citations, and links to support their claims
+    # 3. The article is written fairly and neutrally and is free from exaggeration
+    # 4. You can find the original study based on the information provided
+    # 5. You know how many people participated in the original study
+    # 6. You can make reasonable conclusions from the information provided
+    # 7. The article was published by a trustworthy source
+    # 8. The content of the article appears to be accurate, factual, and recent
+    # 9. The article appears to be free from bias and objective
+    # 10. The findings can be supported by other sources
+
+
+    
+
 
     # Output the extracted article context
     return jsonify({
