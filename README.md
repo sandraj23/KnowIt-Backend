@@ -4,7 +4,7 @@
 
 ---
 
-## Table of Contents
+## Technical Table of Contents
 1. [Features](#features)
 2. [Directory Structure](#directory-structure)
 3. [Prerequisites](#prerequisites)
